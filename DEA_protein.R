@@ -1,7 +1,6 @@
 # Proteomics
 setwd("/Users/zhaoyibo/Library/CloudStorage/OneDrive-UniversityCollegeLondon/UCL PostDoc 2024/ILproject_23/IL2023/focus/IL_Project")
 condition <- read.delim("updated_pheno.txt")
-#train_set <- condition[condition$split=="train",]
 
 # IL_list <- read.delim("IL_list.txt", stringsAsFactors = F)
 # IL_protein <- IL_list$gene
@@ -24,15 +23,12 @@ for (i in 1:length(probe_in)){
         protein_in[i] <- unlist(strsplit(probe_in[i], split = "_"))[3]
 }
 
-protein_training <- protein_IL[intersect(train_set$patno, rownames(protein_IL)),]
-table(train_set$pheno[match(intersect(train_set$patno, rownames(protein_IL)), train_set$patno)])
-
-protein_patno_in <- rownames(protein_training)
-protein_pheno_in <- train_set$pheno[match(rownames(protein_training), train_set$patno)]
+protein_patno_in <- rownames(protein_IL)
+protein_pheno_in <- condition$pheno[match(rownames(protein_IL), condition$patno)]
 comb1 <- protein_patno_in[protein_pheno_in=="Control"|protein_pheno_in=="sPD"]
 comb2 <- protein_patno_in[protein_pheno_in=="Control"|protein_pheno_in=="LPD"]
-comb3 <- protein_patno_in[protein_pheno_in=="Control"|protein_pheno_in=="LProdromal"]
-comb4 <- protein_patno_in[protein_pheno_in=="sPD"|protein_pheno_in=="LPD"]
+#comb3 <- protein_patno_in[protein_pheno_in=="Control"|protein_pheno_in=="LProdromal"]
+#comb4 <- protein_patno_in[protein_pheno_in=="sPD"|protein_pheno_in=="LPD"]
 #comb4 <- protein_patno_in[protein_pheno_in=="LPD"|protein_pheno_in=="LProdromal"]
 #colnames(protein_training) <- protein_in
 
@@ -43,25 +39,25 @@ get_sig_protein <- function(comb){
         sex <- train_set$sex[match(comb, train_set$patno)]
         APOE <- train_set$APOE[match(comb, train_set$patno)]
         p <- integer()
-        log2FC <- integer()
+        coef <- integer()
         for (i in 1:ncol(protein_temp)){
                 model <- data.frame(as.numeric(protein_temp[,i]), group, age, sex)
                 colnames(model)[1] <- protein_in[i]
                 res <- glm(group~., data = model, family = binomial)
                 p[i] <- summary(res)$coefficients[2,4]
-                log2FC[i] <- log2(mean(model[model$group==1,1])/mean(model[model$group==0,1]))
+                coef[i] <- summary(res)$coefficients[2,1]
         }
         p.adj <- p.adjust(p, method = "fdr")
-        sig <- ifelse(p.adj<0.05&log2FC>0, "indianred", ifelse(p.adj<0.05&log2FC<0, "steelblue", "grey"))
-        outtable <- data.frame(log2FC, p, p.adj, sig)
+        sig <- ifelse(p.adj<0.05&coef>0, "indianred", ifelse(p.adj<0.05&coef<0, "steelblue", "grey"))
+        outtable <- data.frame(coef, p, p.adj, sig)
         rownames(outtable) <- probe_in
         return(outtable)
 }
 
 library(ggplot2)
 # sPD vs. Control
-res3 <- get_sig_protein(comb3)
-ggplot(data=res2, aes(x=log2FC, y=-log10(p), col=sig)) + 
+res1 <- get_sig_protein(comb1)
+ggplot(data=res2, aes(x=coef, y=-log10(p), col=sig)) + 
         geom_point() + 
         theme_minimal() +
         # Add lines as before...
@@ -71,7 +67,7 @@ ggplot(data=res2, aes(x=log2FC, y=-log10(p), col=sig)) +
         geom_hline(yintercept=0, col="grey")+
         ## Change point color 
         scale_color_manual(values=c("grey", "indianred", "steelblue"))+
-        xlim(-0.1, 0.1)+
+        xlim(-10,5)+
         ylim(0,10)+
         theme(legend.position = "none")
 
@@ -79,5 +75,5 @@ ggplot(data=res2, aes(x=log2FC, y=-log10(p), col=sig)) +
 
 write.table(res1, "Updated_Protein_sPDvsHC.txt", sep = "\t", row.names = T, quote = F)
 write.table(res2, "Updated_Protein_LPDvsHC.txt", sep = "\t", row.names = T, quote = F)
-write.table(res3, "Protein_LProdromalvsHC.txt", sep = "\t", row.names = T, quote = F)
-write.table(res4, "Updated_Protein_LPDvssPD.txt", sep = "\t", row.names = T, quote = F)
+#write.table(res3, "Protein_LProdromalvsHC.txt", sep = "\t", row.names = T, quote = F)
+#write.table(res4, "Updated_Protein_LPDvssPD.txt", sep = "\t", row.names = T, quote = F)
