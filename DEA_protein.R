@@ -1,6 +1,7 @@
 # Proteomics
 setwd("/Users/zhaoyibo/Library/CloudStorage/OneDrive-UniversityCollegeLondon/UCL PostDoc 2024/ILproject_23/IL2023/focus/IL_Project")
 condition <- read.delim("updated_pheno.txt")
+#train_set <- condition[condition$split=="train",]
 
 # IL_list <- read.delim("IL_list.txt", stringsAsFactors = F)
 # IL_protein <- IL_list$gene
@@ -23,21 +24,23 @@ for (i in 1:length(probe_in)){
         protein_in[i] <- unlist(strsplit(probe_in[i], split = "_"))[3]
 }
 
-protein_patno_in <- rownames(protein_IL)
-protein_pheno_in <- condition$pheno[match(rownames(protein_IL), condition$patno)]
-comb1 <- protein_patno_in[protein_pheno_in=="Control"|protein_pheno_in=="sPD"]
-comb2 <- protein_patno_in[protein_pheno_in=="Control"|protein_pheno_in=="LPD"]
+protein_patno <- rownames(protein_IL)
+protein_pheno <- condition$pheno[match(protein_patno, condition$patno)]
+table(protein_pheno)
+
+comb1 <- protein_patno[protein_pheno=="Control"|protein_pheno=="sPD"]
+comb2 <- protein_patno[protein_pheno=="Control"|protein_pheno=="LPD"]
 #comb3 <- protein_patno_in[protein_pheno_in=="Control"|protein_pheno_in=="LProdromal"]
-#comb4 <- protein_patno_in[protein_pheno_in=="sPD"|protein_pheno_in=="LPD"]
+comb3 <- protein_patno[protein_pheno=="sPD"|protein_pheno=="LPD"]
 #comb4 <- protein_patno_in[protein_pheno_in=="LPD"|protein_pheno_in=="LProdromal"]
-#colnames(protein_training) <- protein_in
+
 
 get_sig_protein <- function(comb){
-        protein_temp <- data.frame(protein_training[comb,])
-        group <- ifelse(protein_pheno_in[match(comb, protein_patno_in)]=="Control", 0, 1)
-        age <- train_set$age[match(comb, train_set$patno)]
-        sex <- train_set$sex[match(comb, train_set$patno)]
-        APOE <- train_set$APOE[match(comb, train_set$patno)]
+        protein_temp <- data.frame(protein_IL[comb,])
+        group <- ifelse(protein_pheno[match(comb, protein_patno)]=="sPD", 0, 1)
+        age <- condition$age[match(comb, condition$patno)]
+        sex <- as.factor(condition$sex[match(comb, condition$patno)])
+        #APOE <- as.factor(condition$APOE[match(comb, condition$patno)])
         p <- integer()
         coef <- integer()
         for (i in 1:ncol(protein_temp)){
@@ -54,9 +57,9 @@ get_sig_protein <- function(comb){
         return(outtable)
 }
 
+# Volcano plots
+res3 <- get_sig_protein(comb3)
 library(ggplot2)
-# sPD vs. Control
-res1 <- get_sig_protein(comb1)
 ggplot(data=res2, aes(x=coef, y=-log10(p), col=sig)) + 
         geom_point() + 
         theme_minimal() +
@@ -67,13 +70,15 @@ ggplot(data=res2, aes(x=coef, y=-log10(p), col=sig)) +
         geom_hline(yintercept=0, col="grey")+
         ## Change point color 
         scale_color_manual(values=c("grey", "indianred", "steelblue"))+
-        xlim(-10,5)+
-        ylim(0,10)+
-        theme(legend.position = "none")
+        xlim(-10, 10)+
+        ylim(0,15)+
+        theme(legend.position = "none")+
+        labs(x = "Coefficient",
+             y = "-Log10(q)")
 
 
 
 write.table(res1, "Updated_Protein_sPDvsHC.txt", sep = "\t", row.names = T, quote = F)
 write.table(res2, "Updated_Protein_LPDvsHC.txt", sep = "\t", row.names = T, quote = F)
 #write.table(res3, "Protein_LProdromalvsHC.txt", sep = "\t", row.names = T, quote = F)
-#write.table(res4, "Updated_Protein_LPDvssPD.txt", sep = "\t", row.names = T, quote = F)
+write.table(res3, "Updated_Protein_LPDvssPD.txt", sep = "\t", row.names = T, quote = F)
